@@ -14,5 +14,9 @@ var HOST = {
 
 exports.config = {
   HOST: HOST, // host specific config
-  PLATFORMS: PLATFORMS  // all platforms supported
+  PLATFORMS: PLATFORMS,  // all platforms supported
+  WEBRTC: {
+    STUN_SERVER_ADDR_0: "172.16.4.6",
+    STUN_SERVER_ADDR_1: "172.16.4.7"
+  }
 };
