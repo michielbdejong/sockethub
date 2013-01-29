@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>voip - michiel</title>
+    <meta charset="utf-8" />
+  </head>
+  <script>
+    var pc = (typeof(mozRTCPeerConnection) == 'undefined' ?
+          new webkitRTCPeerConnection({"iceServers": [{"url": "stun:stun.l.google.com:19302"}]}) :
+          new mozRTCPeerConnection({"iceServers": [{"url": "stun:stun.l.google.com:19302"}]})),
+      sock = new WebSocket('ws://localhost:10550/', 'sockethub');
+    pc.onicecandidate = function(evt) {
+      sock.send(JSON.stringify({
+        rid: 'voip-'+new Date().getTime(),
+        platform: 'webrtc',
+        verb: 'send',
+        object: {
+          candidate: evt.candidate
+        }
+      }));
+    };
+    sock.onopen = function() {
+      sock.send(JSON.stringify({
+        rid: 'voip-'+new Date().getTime(),
+        platform: 'webrtc',
+        verb: 'join'
+      }));
+    };
+    sock.onmessage = function(e) {
+      console.log('incoming', e.data);
+      var obj = JSON.parse(e.data);
+      if(obj.candidate) {
+        pc.addIceCandidate((typeof(mozRTCIceCandidate) == 'undefined' ?
+            new RTCIceCandidate(obj.candidate) :
+            new mozRTCIceCandidate(obj.candidate)));
+      } else if(obj.description) {
+        pc.setRemoteDescription((typeof(mozRTCSessionDescription) == 'undefined' ?
+            new RTCSessionDescription(obj.description) :
+            new mozRTCSessionDescription(obj.description)));
+        pc.createAnswer(function(localDesc) {
+          pc.setLocalDescription(localDesc);
+          sock.send(JSON.stringify({
+            rid: 'voip-'+new Date().getTime(),
+            platform: 'webrtc',
+            verb: 'send',
+            object: {
+              description: localDesc
+            }
+          }));
+        });
+      }
+    };
+  </script>
+</html>

@@ -122,7 +122,7 @@
 	    function connect() {
 	      var connectString = 'ws://' +
 				   document.getElementById('sockethubHost').value +
-				   '/sockethub';
+				   '/';
 	      sock = new WebSocket(connectString, 'sockethub');
 
 	      sock.onopen = function () {
