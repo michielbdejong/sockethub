@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>webrtc - friend</title>
+    <meta charset="utf-8" />
+  </head>
+  <body>
+     stun server: <input id="stunServer" value="stun:stun.l.google.com:19302" />
+     disco sock: <input id="discoSock" value="ws://localhost:8080/friend-sock/websocket" />
+  <script>
+    var pc = (typeof(mozRTCPeerConnection) == 'undefined' ?
+          new webkitRTCPeerConnection({iceServers: [{url: document.getElementById('stunServer').value}]}) :
+          new mozRTCPeerConnection({iceServers: [{url: document.getElementById('stunServer').value}]})),
+      sock = new WebSocket(document.getElementById('discoSock').value);
+    pc.onicecandidate = function(evt) {
+      sock.send(JSON.stringify({candidate: evt.candidate}));
+    };
+    sock.onopen = function() {
+      pc.createOffer(function(desc) {
+        pc.setLocalDescription(desc);
+        sock.send(JSON.stringify({description: desc}));
+      });
+    };
+    sock.onmessage = function(e) {
+      console.log('incoming', e.data);
+      var obj = JSON.parse(e.data);
+      if(obj.candidate) {
+        pc.addIceCandidate((typeof(mozRTCIceCandidate) == 'undefined' ?
+            new RTCIceCandidate(obj.candidate) :
+            new mozRTCIceCandidate(obj.candidate)));
+      } else if(obj.description) {
+        pc.setRemoteDescription((typeof(mozRTCSessionDescription) == 'undefined' ?
+            new RTCSessionDescription(obj.description) :
+            new mozRTCSessionDescription(obj.description)));
+      }
+    };
+  </script>
+</html>

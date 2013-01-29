@@ -1,17 +1,18 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>voip - michiel</title>
+    <title>webrtc - sockethub</title>
     <meta charset="utf-8" />
   </head>
   <body>
-    <input id="secret" value="1234567890" />
+    Sockethub server: <input id="sockethubServer" value="localhost:10550" />
+    Secret: <input id="secret" value="1234567890" />
   </body>
   <script>
     var pc = (typeof(mozRTCPeerConnection) == 'undefined' ?
           new webkitRTCPeerConnection({"iceServers": [{"url": "stun:stun.l.google.com:19302"}]}) :
           new mozRTCPeerConnection({"iceServers": [{"url": "stun:stun.l.google.com:19302"}]})),
-      sock = new WebSocket('ws://localhost:10550/', 'sockethub');
+      sock = new WebSocket('ws://'+document.getElementById('sockethubServer').value+'/', 'sockethub');
     pc.onicecandidate = function(evt) {
       sock.send(JSON.stringify({
         rid: 'voip-'+new Date().getTime(),
