@@ -4,6 +4,9 @@
     <title>voip - michiel</title>
     <meta charset="utf-8" />
   </head>
+  <body>
+    <input id="secret" value="1234567890" />
+  </body>
   <script>
     var pc = (typeof(mozRTCPeerConnection) == 'undefined' ?
           new webkitRTCPeerConnection({"iceServers": [{"url": "stun:stun.l.google.com:19302"}]}) :
@@ -20,6 +23,14 @@
       }));
     };
     sock.onopen = function() {
+      sock.send(JSON.stringify({
+        rid: 'voip-'+new Date().getTime(),
+        platform: 'dispatcher',
+        verb: 'register',
+        object: {
+          secret: document.getElementById('secret').value
+        }
+      }));
       sock.send(JSON.stringify({
         rid: 'voip-'+new Date().getTime(),
         platform: 'webrtc',
