@@ -6,23 +6,28 @@ define(['require'], function (require) {
   var suites = [];
 
   suites.push({
-    name: "email platform tests",
-    desc: "collection of tests for the email platform",
+    name: "facebook platform tests",
+    desc: "collection of tests for the facebook platform",
     setup: function (env, test) {
-      env.nodemailer = {};
-      env.nodemailer.createTransport = test.Stub(function createTransportStub(name, obj) {
-            if (name === 'SMTP') {
-              console.log('NODEMAILER createTransport STUB CALLED');
-              var ret =  {};
-              ret.sendMail = test.Stub(function sendMail(msg, cb) {
-                  console.log('NODEMAILER sendMail STUB CALLED');
-                  cb(null, true);
-                });
+      env.https = {
+        request: this.Stub(function(obj, cb) {
+          console.log('HTTPS STUB CALLED');
 
-              return ret;
+          cb({
+            status: true,
+            setEncoding: function (encoding) {return true;},
+            on: function (name, cb2) {
+              if (name === 'end') {
+                cb2();
+              }
             }
           });
-      GLOBAL.nodemailer = env.nodemailer;
+          return {
+            end: function() {}
+          };
+        })
+      };
+      GLOBAL.https = env.https;
 
       env.respHandler = function (testObj) {
         return function(err, status, obj) {
@@ -35,49 +40,42 @@ define(['require'], function (require) {
         };
       };
 
-      env.Session = require('../lib/protocols/sockethub/session')('1234567890');
-      env.Session.get('testsess1').
+      var Session = require('../lib/protocols/sockethub/session')('1234567890');
+      Session.get('testsess1').
         then(function (session) {
           env.session = session;
 
-          return session.getPlatformSession('email');
+          return session.getPlatformSession('facebook');
         }).
         then(function (psession) {
           env.psession = psession;
           env.psession.send = function (job) {
             test.write('psession send called:',job);
           };
-          var EmailMod = require('../lib/protocols/sockethub/platforms/email');
-          //console.log('email:', env.Email);
-          env.Email = EmailMod();
-          env.Email.init(psession).then(function() {
+          var FBMod = require('../lib/protocols/sockethub/platforms/facebook');
+          //console.log('facebook:', FBMod);
+
+          env.Facebook = FBMod();
+          env.Facebook.init(psession).then(function() {
             test.result(true);
           }, function(err) {
             test.result(false, err);
           });
         });
     },
-    takedown: function (env, test) {
-      env.Session.destroy(env.session.getSessionID()).then(function () {
-        test.result(true);
-      }, function (err) {
-        test.result(false, err);
-      });
-    },
     tests: [
       {
         desc: "set credential details",
         run: function (env, test) {
           var job = {
-            target: 'email',
+            target: 'facebook',
             object: {
               credentials: {
-                'whitney@houston.com': {
-                  smtp: {
-                    host: 'mailservice.example.com',
-                    username: 'whit',
-                    password: 'ney'
-                  }
+                fbuser: {
+                  actor: {
+                    address: "fbuser"
+                  },
+                  access_token: 'abcde'
                 }
               }
             }
@@ -95,19 +93,20 @@ define(['require'], function (require) {
         }
       },
       {
-        desc: "email.send() eventually calls nodemailer.sendMail()",
+        desc: "facebook.post() eventually calls https request",
         run: function (env, test) {
           var job = {
             rid: '002',
-            verb: 'send',
-            platform: 'email',
-            actor: { name: 'Whitney Houston', address: 'whitney@houston.com' },
-            object: { subject: 'Love you', text: 'I will always.' },
-            target: { to: [{ name: 'Stevie Wonder', address: 'stevie@wonder.com' }] }
+            verb: 'post',
+            platform: 'facebook',
+            actor: { address: 'fbuser' },
+            object: { text: 'blah blah' },
+            target: { to: [{ address: 'fbuser2' }] }
           };
-          env.Email.send(job).then(function (err, status, obj) {
+          env.Facebook.post(job).then(function (err, status, obj) {
             env.respHandler()(err, status, obj);
-            test.assert(env.nodemailer.createTransport.called, true);
+            test.assertAnd(status, true);
+            test.assert(env.https.request.called, true);
             //var transport = env.nodemailer.createTransport('SMTP', {});
             //test.assert(transport.sendMail.called, true);
           });
